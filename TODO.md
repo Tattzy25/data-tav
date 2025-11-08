@@ -1,0 +1,4 @@
+- [x] Edit app/page.tsx: Remove Header component, remove bg-background class, adjust main container for full width/height embedding
+- [x] Edit app/layout.tsx: Add margin: 0 to body for embed-friendly styles
+- [x] Run the app to verify changes (running on http://localhost:3001)
+- [x] Provide iframe embed code
