@@ -1,4 +1,3 @@
-- [x] Edit app/page.tsx: Remove Header component, remove bg-background class, adjust main container for full width/height embedding
-- [x] Edit app/layout.tsx: Add margin: 0 to body for embed-friendly styles
-- [x] Run the app to verify changes (running on http://localhost:3001)
-- [x] Provide iframe embed code
+- [x] Add model selector in AIGenerator component with options: OpenAI (gpt-5-mini-2025-08-07, gpt-5-nano-2025-08-07), Groq (qwen-qwq-32b, openai/gpt-oss-120b, openai/gpt-oss-20b)
+- [x] Update API route to accept model parameter and route to OpenAI or Groq based on model prefix
+- [ ] Test the new model selections

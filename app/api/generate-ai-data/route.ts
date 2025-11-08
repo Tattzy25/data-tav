@@ -1,8 +1,13 @@
 import { generateText } from "ai"
+import Groq from "groq-sdk"
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+})
 
 export async function POST(request: Request) {
   try {
-    const { headers, rowCount, context } = await request.json()
+    const { headers, rowCount, context, model = "groq/openai/gpt-oss-120b" } = await request.json()
 
     if (!headers || !Array.isArray(headers) || headers.length === 0) {
       return Response.json({ error: "Headers are required" }, { status: 400 })
@@ -32,11 +37,42 @@ Example format:
   {"Name": "Jane Doe", "Email": "jane.doe@example.com", "Age": 28}
 ]`
 
-    const { text } = await generateText({
-      model: "openai/gpt-4o-mini",
-      prompt,
-      temperature: 0.8,
-    })
+    let text: string
+
+    if (model.startsWith("groq/")) {
+      const groqModel = model.replace("groq/", "")
+      const completion = await groq.chat.completions.create({
+        model: groqModel,
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.6,
+        max_tokens: 32768,
+        top_p: 0.95,
+        stream: false,
+        stop: null,
+      })
+      text = completion.choices[0]?.message?.content || ""
+    } else if (model.startsWith("openai/")) {
+      const openaiModel = model.replace("openai/", "")
+      const result = await generateText({
+        model: `openai/${openaiModel}`,
+        prompt,
+        temperature: 0.8,
+      })
+      text = result.text
+    } else {
+      // Fallback to default
+      const result = await generateText({
+        model: "openai/gpt-5-mini-2025-08-07",
+        prompt,
+        temperature: 0.8,
+      })
+      text = result.text
+    }
 
     // Extract JSON from response (handle markdown code blocks)
     let jsonText = text.trim()

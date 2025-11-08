@@ -137,7 +137,7 @@ export function SpreadsheetApp() {
     toast({ description: `Generated ${rowCount} rows with ${headers.length} columns` })
   }
 
-  const handleAIGenerate = async (headerInput: string, rowCount: number, context: string) => {
+  const handleAIGenerate = async (headerInput: string, rowCount: number, context: string, model: string) => {
     const headers = headerInput
       .split(",")
       .map((h) => h.trim())
@@ -158,7 +158,7 @@ export function SpreadsheetApp() {
       const response = await fetch("/api/generate-ai-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ headers, rowCount, context }),
+        body: JSON.stringify({ headers, rowCount, context, model }),
       })
 
       if (!response.ok) {
@@ -380,10 +380,11 @@ function ManualGenerator({
 function AIGenerator({
   onGenerate,
   loading,
-}: { onGenerate: (headers: string, rows: number, context: string) => void; loading: boolean }) {
+}: { onGenerate: (headers: string, rows: number, context: string, model: string) => void; loading: boolean }) {
   const [headers, setHeaders] = useState("")
   const [rows, setRows] = useState(10)
   const [context, setContext] = useState("")
+  const [model, setModel] = useState("groq/openai/gpt-oss-120b")
 
   return (
     <Card>
@@ -421,6 +422,21 @@ function AIGenerator({
           </p>
         </div>
         <div className="space-y-2">
+          <Label htmlFor="ai-model">AI Model</Label>
+          <Select value={model} onValueChange={setModel}>
+            <SelectTrigger id="ai-model">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="openai/gpt-5-mini-2025-08-07">OpenAI GPT-5 Mini</SelectItem>
+              <SelectItem value="openai/gpt-5-nano-2025-08-07">OpenAI GPT-5 Nano</SelectItem>
+              <SelectItem value="groq/qwen-qwq-32b">Groq Qwen QWQ 32B</SelectItem>
+              <SelectItem value="groq/openai/gpt-oss-120b">Groq OpenAI GPT OSS 120B</SelectItem>
+              <SelectItem value="groq/openai/gpt-oss-20b">Groq OpenAI GPT OSS 20B</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
           <Label htmlFor="ai-rows">Number of Rows (max 100)</Label>
           <Input
             id="ai-rows"
@@ -431,7 +447,7 @@ function AIGenerator({
             onChange={(e) => setRows(Number(e.target.value))}
           />
         </div>
-        <Button onClick={() => onGenerate(headers, rows, context)} disabled={!headers || loading} className="w-full">
+        <Button onClick={() => onGenerate(headers, rows, context, model)} disabled={!headers || loading} className="w-full">
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
