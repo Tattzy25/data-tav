@@ -5,6 +5,7 @@ import string
 from typing import List, Dict, Any
 from groq import Groq
 from openai import OpenAI
+from flask import Flask, request, jsonify
 
 # Initialize clients
 groq_client = Groq(api_key="your_groq_api_key")
@@ -98,6 +99,48 @@ Example format:
         raise ValueError("Response is not an array")
     return data
 
+app = Flask(__name__)
+
+@app.route('/fetch_url', methods=['POST'])
+def fetch_url_endpoint():
+    data = request.json
+    url = data.get('url')
+    if not url:
+        return jsonify({'error': 'URL required'}), 400
+    try:
+        result = fetch_from_url(url)
+        return jsonify({'data': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/generate_manual', methods=['POST'])
+def generate_manual_endpoint():
+    data = request.json
+    headers = data.get('headers')
+    rows = data.get('rows')
+    if not headers or not rows:
+        return jsonify({'error': 'Headers and rows required'}), 400
+    try:
+        result = generate_manual(headers, rows)
+        return jsonify({'data': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/generate_ai', methods=['POST'])
+def generate_ai_endpoint():
+    data = request.json
+    headers = data.get('headers')
+    rows = data.get('rows')
+    context = data.get('context', '')
+    model = data.get('model', 'groq/openai/gpt-oss-120b')
+    if not headers or not rows:
+        return jsonify({'error': 'Headers and rows required'}), 400
+    try:
+        result = generate_ai(headers, rows, context, model)
+        return jsonify({'data': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # System prompts file
 SYSTEM_PROMPTS = {
     "url": "Fetch data from the provided URL and return as JSON array.",
@@ -106,5 +149,4 @@ SYSTEM_PROMPTS = {
 }
 
 if __name__ == "__main__":
-    # Example usage
-    print("Data Generator Ready")
+    app.run(debug=False, host='0.0.0.0', port=5000)
