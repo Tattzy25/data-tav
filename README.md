@@ -13,3 +13,163 @@ No more waiting. No more begging. No more fighting with AI. Brigit AI is here, a
 ## Domain
 
 [Brigit-ai.com](https://brigit-ai.com)
+## Features
+
+✨ **AI-Powered Data Generation** - Generate realistic, context-aware data using OpenAI or Groq models  
+📊 **Manual Data Generation** - Create custom datasets with your own headers and specifications  
+🔗 **URL Data Import** - Fetch and import data from any JSON API endpoint  
+📥 **Import/Export** - Import CSV/JSON files and export your data in multiple formats  
+💾 **Auto-Save** - Your data is automatically saved to localStorage and restored on return  
+🎨 **Interactive Spreadsheet** - Edit cells inline, visualize data with charts  
+⌨️ **Keyboard Shortcuts** - Power user features for faster workflow  
+🔒 **Production Ready** - Security headers, rate limiting, error boundaries, and more
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ installed
+- npm or pnpm package manager
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/Tattzy25/data-tav.git
+cd data-tav
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
+
+4. Add your API keys to `.env.local`:
+```env
+# For OpenAI models (optional)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# For Groq models (optional)
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+### Development
+
+Run the development server:
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Production Build
+
+Build the application:
+```bash
+npm run build
+```
+
+Start the production server:
+```bash
+npm start
+```
+
+## Deployment
+
+### Deploy to Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Import your repository on [Vercel](https://vercel.com)
+3. Add environment variables in the Vercel dashboard:
+   - `OPENAI_API_KEY` (if using OpenAI models)
+   - `GROQ_API_KEY` (if using Groq models)
+4. Deploy!
+
+### Deploy to Other Platforms
+
+Brigit AI is a Next.js application and can be deployed to any platform that supports Next.js:
+- Netlify
+- Railway
+- Render
+- Digital Ocean
+- AWS
+- Google Cloud
+
+Refer to the [Next.js deployment documentation](https://nextjs.org/docs/deployment) for platform-specific instructions.
+
+## Keyboard Shortcuts
+
+- `Ctrl/Cmd + E` - Export as CSV
+- `Ctrl/Cmd + Shift + E` - Export as JSON
+- `Ctrl/Cmd + I` - Import data file
+- `Ctrl/Cmd + K` - Clear all data (with confirmation)
+
+## Usage
+
+### Generate from URL
+1. Click the "From URL" tab
+2. Enter a JSON API endpoint (e.g., `https://jsonplaceholder.typicode.com/users`)
+3. Click "Fetch & Generate"
+4. Data is automatically imported and ready to use
+
+### Manual Generation
+1. Click the "Manual" tab
+2. Enter comma-separated headers (e.g., `Name, Email, Company`)
+3. Choose number of rows (1-10,000)
+4. Click "Generate Data"
+
+### AI Generation
+1. Click the "AI Generate" tab
+2. Enter comma-separated headers
+3. (Optional) Add context for more realistic data
+4. Select an AI model (OpenAI or Groq)
+5. Choose number of rows (1-100)
+6. Click "Generate with AI"
+
+### Import Data
+1. Click "Import Data" button when you have existing data
+2. Select a CSV or JSON file
+3. Data is automatically parsed and loaded
+
+### Export Data
+- Click "Export CSV" for Excel-compatible format
+- Click "Export JSON" for JSON format
+
+## Security Features
+
+- ✅ Rate limiting on API endpoints (10 requests per minute)
+- ✅ Input validation and sanitization
+- ✅ Security headers (X-Frame-Options, CSP, etc.)
+- ✅ Error boundaries for graceful error handling
+- ✅ No data sent to external servers (except AI generation)
+- ✅ localStorage for client-side persistence only
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (React 19)
+- **Styling**: Tailwind CSS
+- **UI Components**: Radix UI
+- **Charts**: Recharts
+- **AI**: OpenAI & Groq SDK
+- **Analytics**: Vercel Analytics
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is private and proprietary.
+
+## Support
+
+For issues or questions, please open an issue on GitHub or contact the maintainers.
+
+---
+
+Built with ❤️ by Brigit AI

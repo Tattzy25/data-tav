@@ -62,6 +62,41 @@ export function SpreadsheetApp() {
     }
   }, [data, columns])
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + E: Export CSV
+      if ((e.ctrlKey || e.metaKey) && e.key === "e") {
+        e.preventDefault()
+        if (data.length > 0) {
+          handleExport("csv")
+        }
+      }
+      // Ctrl/Cmd + Shift + E: Export JSON
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "E") {
+        e.preventDefault()
+        if (data.length > 0) {
+          handleExport("json")
+        }
+      }
+      // Ctrl/Cmd + I: Import
+      if ((e.ctrlKey || e.metaKey) && e.key === "i") {
+        e.preventDefault()
+        fileInputRef.current?.click()
+      }
+      // Ctrl/Cmd + K: Clear (with confirmation)
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault()
+        if (data.length > 0) {
+          setShowClearDialog(true)
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [data])
+
   const handleGenerateFromURL = async () => {
     if (!url) {
       setError("Please enter a valid URL")
