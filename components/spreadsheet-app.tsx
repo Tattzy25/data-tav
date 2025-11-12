@@ -1,18 +1,28 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Link2, Table2, Download, Loader2, AlertCircle, Sparkles } from "lucide-react"
+import { Link2, Table2, Download, Loader2, AlertCircle, Sparkles, Upload, Trash2 } from "lucide-react"
 import { Spreadsheet } from "./spreadsheet"
 import { generateData, type ColumnConfig, exportToCSV, exportToJSON } from "@/lib/data-generator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const STORAGE_KEY = "brigit_ai_data"
 
@@ -22,6 +32,8 @@ export function SpreadsheetApp() {
   const [url, setUrl] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showClearDialog, setShowClearDialog] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -212,11 +224,78 @@ export function SpreadsheetApp() {
     setData([])
     setColumns([])
     localStorage.removeItem(STORAGE_KEY)
+    setShowClearDialog(false)
     toast({ description: "Data cleared" })
+  }
+
+  const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string
+        let importedData: any[]
+
+        if (file.name.endsWith(".json")) {
+          importedData = JSON.parse(content)
+          if (!Array.isArray(importedData)) {
+            importedData = [importedData]
+          }
+        } else if (file.name.endsWith(".csv")) {
+          // Simple CSV parsing
+          const lines = content.split("\n").filter((line) => line.trim())
+          const headers = lines[0].split(",").map((h) => h.trim())
+          importedData = lines.slice(1).map((line) => {
+            const values = line.split(",").map((v) => v.trim())
+            return headers.reduce((obj, header, index) => {
+              obj[header] = values[index] || ""
+              return obj
+            }, {} as Record<string, any>)
+          })
+        } else {
+          throw new Error("Unsupported file format. Please use CSV or JSON.")
+        }
+
+        if (importedData.length === 0) {
+          throw new Error("No data found in file")
+        }
+
+        const firstItem = importedData[0]
+        const detectedColumns: ColumnConfig[] = Object.keys(firstItem).map((key, index) => ({
+          id: String(index),
+          name: key,
+          type: detectDataType(firstItem[key]),
+        }))
+
+        setColumns(detectedColumns)
+        setData(importedData.map((item, idx) => ({ id: String(idx), ...item })))
+        toast({ description: `Successfully imported ${importedData.length} rows` })
+      } catch (err) {
+        toast({
+          description: err instanceof Error ? err.message : "Failed to import file",
+          variant: "destructive",
+        })
+      }
+    }
+    reader.readAsText(file)
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
   }
 
   return (
     <div className="space-y-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,.json"
+        onChange={handleImportFile}
+        className="hidden"
+      />
+      
       <Tabs defaultValue="url" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto">
           <TabsTrigger value="url" className="gap-2">
@@ -297,6 +376,10 @@ export function SpreadsheetApp() {
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">
+              <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm">
+                <Upload className="w-4 h-4 mr-2" />
+                Import Data
+              </Button>
               <Button onClick={() => handleExport("csv")} variant="outline" size="sm">
                 <Download className="w-4 h-4 mr-2" />
                 Export CSV
@@ -305,7 +388,8 @@ export function SpreadsheetApp() {
                 <Download className="w-4 h-4 mr-2" />
                 Export JSON
               </Button>
-              <Button onClick={handleClearData} variant="outline" size="sm">
+              <Button onClick={() => setShowClearDialog(true)} variant="outline" size="sm">
+                <Trash2 className="w-4 h-4 mr-2" />
                 Clear Data
               </Button>
             </div>
@@ -313,6 +397,21 @@ export function SpreadsheetApp() {
           <Spreadsheet data={data} columns={columns} onDataChange={setData} onColumnsChange={setColumns} />
         </div>
       )}
+
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear all data?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all your data and cannot be undone. Your session will also be cleared from storage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearData}>Clear Data</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
