@@ -63,13 +63,18 @@ Following the radio-browser.info recommendations:
 The `RadioBrowser` component (`components/radio-browser.tsx`) provides:
 - Genre selection buttons for default genres
 - Search input for custom queries
+- **Built-in audio player with playback controls**:
+  - **Play/Pause button** - Toggle playback of current station
+  - **Next button** - Skip to the next station in the list
+  - **Now Playing card** - Displays currently playing station with controls
 - Station list with:
   - Station name and favicon
   - Country code badge
   - Bitrate and codec information
   - Vote count
   - Tags display
-  - Play button (opens stream in new tab)
+  - Play button (starts playing the station)
+  - Visual indicator for currently playing station
   - Homepage link (if available)
 
 ## Usage
@@ -77,8 +82,10 @@ The `RadioBrowser` component (`components/radio-browser.tsx`) provides:
 1. Navigate to the "Radio" tab in the application
 2. Click on a default genre button or use the search bar
 3. Browse the filtered station list
-4. Click the Play button to listen to a station
-5. Click the External Link icon to visit the station's homepage
+4. Click the Play button on any station to start listening
+5. Use the **Play/Pause** button in the Now Playing card to control playback
+6. Use the **Next** button to skip to the next station
+7. Click the External Link icon to visit a station's homepage
 
 ## API Examples
 
@@ -101,8 +108,10 @@ GET /api/radio-servers
 
 Potential improvements:
 - Favorite stations functionality
-- Built-in audio player
+- Volume control slider
 - Station recommendations
 - Country/language filters in UI
 - Sort options (by bitrate, votes, etc.)
 - Export station lists
+- Previous button to go back in history
+- Shuffle mode
