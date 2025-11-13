@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Radio, Search, Play, ExternalLink } from "lucide-react"
+import { Loader2, Radio, Search, Play, Pause, SkipForward, ExternalLink, Volume2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -47,6 +47,10 @@ export function RadioBrowser() {
   const [loading, setLoading] = useState(false)
   const [selectedGenre, setSelectedGenre] = useState<string>("")
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentStation, setCurrentStation] = useState<RadioStation | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentStationIndex, setCurrentStationIndex] = useState<number>(-1)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const { toast } = useToast()
 
   const fetchStations = async (tag: string = "") => {
@@ -96,10 +100,88 @@ export function RadioBrowser() {
     }
   }
 
-  const playStation = (station: RadioStation) => {
-    // Open station in new tab to play
-    window.open(station.urlResolved || station.url, '_blank')
+  const playStation = (station: RadioStation, index: number) => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.src = station.urlResolved || station.url
+      audioRef.current.load()
+      audioRef.current.play().catch((error) => {
+        console.error('Error playing station:', error)
+        toast({
+          variant: "destructive",
+          description: "Failed to play station. Try another one."
+        })
+      })
+      setCurrentStation(station)
+      setCurrentStationIndex(index)
+      setIsPlaying(true)
+    }
   }
+
+  const togglePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause()
+        setIsPlaying(false)
+      } else {
+        audioRef.current.play().catch((error) => {
+          console.error('Error playing:', error)
+          toast({
+            variant: "destructive",
+            description: "Failed to play station"
+          })
+        })
+        setIsPlaying(true)
+      }
+    }
+  }
+
+  const playNext = () => {
+    if (stations.length === 0) return
+    
+    const nextIndex = (currentStationIndex + 1) % stations.length
+    playStation(stations[nextIndex], nextIndex)
+  }
+
+  useEffect(() => {
+    // Initialize audio element
+    audioRef.current = new Audio()
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!audioRef.current) return
+
+    const handleEnded = () => {
+      // Auto-play next station when current ends (shouldn't happen with radio streams, but just in case)
+      playNext()
+    }
+    
+    const handleError = () => {
+      setIsPlaying(false)
+      toast({
+        variant: "destructive",
+        description: "Stream error. Trying next station..."
+      })
+      setTimeout(() => playNext(), 1000)
+    }
+    
+    audioRef.current.addEventListener('ended', handleEnded)
+    audioRef.current.addEventListener('error', handleError)
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('ended', handleEnded)
+        audioRef.current.removeEventListener('error', handleError)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stations, currentStationIndex])
 
   return (
     <div className="w-full h-full p-6">
@@ -147,6 +229,62 @@ export function RadioBrowser() {
             </div>
           </div>
 
+          {/* Now Playing Controls */}
+          {currentStation && (
+            <Card className="bg-muted/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  {currentStation.favicon && (
+                    <img
+                      src={currentStation.favicon}
+                      alt=""
+                      className="h-16 w-16 rounded object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold truncate">{currentStation.name}</h4>
+                    <div className="flex gap-2 mt-1">
+                      {currentStation.countrycode && (
+                        <Badge variant="outline" className="text-xs">
+                          {currentStation.countrycode}
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="text-xs">
+                        {currentStation.bitrate}kbps
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="lg"
+                      variant="default"
+                      onClick={togglePlayPause}
+                      title={isPlaying ? "Pause" : "Play"}
+                    >
+                      {isPlaying ? (
+                        <Pause className="h-5 w-5" />
+                      ) : (
+                        <Play className="h-5 w-5" />
+                      )}
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      onClick={playNext}
+                      disabled={stations.length === 0}
+                      title="Next station"
+                    >
+                      <SkipForward className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Stations List */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -155,8 +293,11 @@ export function RadioBrowser() {
           ) : stations.length > 0 ? (
             <ScrollArea className="h-[500px] w-full rounded-md border p-4">
               <div className="space-y-3">
-                {stations.map((station) => (
-                  <Card key={station.stationuuid} className="p-4">
+                {stations.map((station, index) => (
+                  <Card 
+                    key={station.stationuuid} 
+                    className={`p-4 ${currentStation?.stationuuid === station.stationuuid ? 'border-primary' : ''}`}
+                  >
                     <div className="flex items-start gap-3">
                       {station.favicon && (
                         <img
@@ -195,10 +336,15 @@ export function RadioBrowser() {
                       <div className="flex gap-2">
                         <Button
                           size="sm"
-                          onClick={() => playStation(station)}
+                          onClick={() => playStation(station, index)}
                           title="Play station"
+                          variant={currentStation?.stationuuid === station.stationuuid && isPlaying ? "default" : "outline"}
                         >
-                          <Play className="h-4 w-4" />
+                          {currentStation?.stationuuid === station.stationuuid && isPlaying ? (
+                            <Volume2 className="h-4 w-4" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
                         </Button>
                         {station.homepage && (
                           <Button
