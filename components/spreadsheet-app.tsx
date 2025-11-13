@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Link2, Table2, Download, Loader2, AlertCircle, Sparkles, Upload, Trash2 } from "lucide-react"
 import { Spreadsheet } from "./spreadsheet"
+import { RadioBrowser } from "./radio-browser"
 import { generateData, type ColumnConfig, exportToCSV, exportToJSON } from "@/lib/data-generator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
@@ -332,7 +333,7 @@ export function SpreadsheetApp() {
       />
       
       <Tabs defaultValue="url" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto">
+        <TabsList className="grid w-full grid-cols-4 max-w-3xl mx-auto">
           <TabsTrigger value="url" className="gap-2">
             <Link2 className="w-4 h-4" />
             From URL
@@ -344,6 +345,10 @@ export function SpreadsheetApp() {
           <TabsTrigger value="ai" className="gap-2">
             <Sparkles className="w-4 h-4" />
             AI Generate
+          </TabsTrigger>
+          <TabsTrigger value="radio" className="gap-2">
+            <Radio className="w-4 h-4" />
+            Radio
           </TabsTrigger>
         </TabsList>
 
@@ -398,6 +403,10 @@ export function SpreadsheetApp() {
 
         <TabsContent value="ai" className="mt-6">
           <AIGenerator onGenerate={handleAIGenerate} loading={loading} />
+        </TabsContent>
+
+        <TabsContent value="radio" className="mt-6">
+          <RadioBrowser />
         </TabsContent>
       </Tabs>
 
