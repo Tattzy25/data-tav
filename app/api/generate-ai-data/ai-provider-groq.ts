@@ -1,25 +1,38 @@
 import Groq from "groq-sdk"
 
-export async function generateWithGroq(model: string, prompt: string, apiKey: string): Promise<string> {
-  const groq = new Groq({
-    apiKey,
-  })
+type ChatMessage = {
+  role: "system" | "user" | "assistant" | "tool"
+  content: string
+}
 
-  const groqModel = model.replace("groq/", "")
+type GroqGenerationOptions = {
+  model: string
+  messages: ChatMessage[]
+  apiKey: string
+  temperature?: number
+  maxTokens?: number
+  reasoningEffort?: "low" | "medium" | "high"
+}
+
+export async function generateWithGroq({
+  model,
+  messages,
+  apiKey,
+  temperature,
+  maxTokens,
+  reasoningEffort,
+}: GroqGenerationOptions): Promise<string> {
+  const groq = new Groq({ apiKey })
 
   const completion = await groq.chat.completions.create({
-    model: groqModel,
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
-    temperature: 0.6,
-    max_tokens: 32768,
-    top_p: 0.95,
+    model,
+    messages,
+    temperature,
+    max_completion_tokens: maxTokens,
+    top_p: 1,
     stream: false,
-    stop: null,
+    reasoning: reasoningEffort ? { effort: reasoningEffort } : undefined,
+    tools: [{ type: "browser_search" }],
   })
 
   return completion.choices[0]?.message?.content || ""

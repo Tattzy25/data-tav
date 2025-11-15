@@ -37,13 +37,13 @@ export function SpreadsheetApp() {
   const [showClearDialog, setShowClearDialog] = useState(false)
 
   // Model selection + advanced config (stored in localStorage via AIConfigPopover)
-  const [model, setModel] = useState("groq/openai/gpt-oss-120b")
+  const [model, setModel] = useState("")
   const [aiConfig, setAiConfig] = useState<AIConfig | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
-  const resolvedModel = aiConfig?.modelId || model || "groq/openai/gpt-oss-120b"
+  const resolvedModel = aiConfig?.modelId || model || ""
 
   useEffect(() => {
     try {
@@ -166,6 +166,11 @@ export function SpreadsheetApp() {
   }
 
   const handleManualGenerate = (headerInput: string, rowCount: number, orientation: "horizontal" | "vertical") => {
+    if (!resolvedModel) {
+      toast({ description: "Select an AI model before generating.", variant: "destructive" })
+      return
+    }
+
     const headers = headerInput
       .split(",")
       .map((h) => h.trim())

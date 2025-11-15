@@ -19,29 +19,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-// AI model options derived from the AI generator models
-const aiModels = [
-  {
-    value: "openai/gpt-5-mini-2025-08-07",
-    label: "OpenAI GPT-5 Mini",
-  },
-  {
-    value: "openai/gpt-5-nano-2025-08-07",
-    label: "OpenAI GPT-5 Nano",
-  },
-  {
-    value: "groq/qwen-qwq-32b",
-    label: "Groq Qwen QWQ 32B",
-  },
-  {
-    value: "groq/openai/gpt-oss-120b",
-    label: "Groq OpenAI GPT OSS 120B",
-  },
-  {
-    value: "groq/openai/gpt-oss-20b",
-    label: "Groq OpenAI GPT OSS 20B",
-  },
-]
+type ModelOption = {
+  value: string
+  label: string
+  provider?: string
+}
 
 export type ModelSelectProps = {
   value?: string
@@ -63,6 +45,49 @@ export function ModelSelect({
 }: ModelSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [internalValue, setInternalValue] = React.useState("")
+  const [options, setOptions] = React.useState<ModelOption[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    async function loadModels() {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetch("/api/model-registry")
+        if (!response.ok) {
+          throw new Error(`Failed to load models (${response.status})`)
+        }
+
+        const payload = await response.json()
+        if (!cancelled) {
+          const models: ModelOption[] = (payload.models || []).map((model: any) => ({
+            value: model.id,
+            label: model.label,
+            provider: model.provider,
+          }))
+          setOptions(models)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Unable to load AI models")
+          setOptions([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadModels()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const value = controlledValue ?? internalValue
 
@@ -78,8 +103,20 @@ export function ModelSelect({
   }
 
   const selectedLabel = value
-    ? aiModels.find((model) => model.value === value)?.label ?? value
+    ? options.find((model) => model.value === value)?.label ?? value
     : null
+
+  const buttonLabel = (() => {
+    if (isLoading) {
+      return "Loading models..."
+    }
+    if (error) {
+      return "Models unavailable"
+    }
+    return selectedLabel ?? placeholder
+  })()
+
+  const isDisabled = isLoading || !!error || options.length === 0
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -88,9 +125,10 @@ export function ModelSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          disabled={isDisabled}
           className={cn("w-[260px] justify-between", className)}
         >
-          {selectedLabel ?? placeholder}
+          {buttonLabel}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -98,15 +136,20 @@ export function ModelSelect({
         <Command>
           <CommandInput placeholder="Search model..." className="h-9" />
           <CommandList>
-            <CommandEmpty>No model found.</CommandEmpty>
+            <CommandEmpty>
+              {error ? error : isLoading ? "Loading models..." : "No models configured."}
+            </CommandEmpty>
             <CommandGroup>
-              {aiModels.map((model) => (
-                <CommandItem
-                  key={model.value}
-                  value={model.value}
-                  onSelect={handleSelect}
-                >
-                  {model.label}
+              {options.map((model) => (
+                <CommandItem key={model.value} value={model.value} onSelect={handleSelect}>
+                  <div className="flex flex-col">
+                    <span>{model.label}</span>
+                    {model.provider && (
+                      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {model.provider}
+                      </span>
+                    )}
+                  </div>
                   <Check
                     className={cn(
                       "ml-auto h-4 w-4",

@@ -56,7 +56,34 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 # For Groq models (optional)
 GROQ_API_KEY=your_groq_api_key_here
+
+# Point to a JSON registry file that enumerates every model you want exposed
+AI_MODEL_REGISTRY_FILE=config/ai-model-registry.json
 ```
+
+5. Define the registry file referenced above. Start from the sample in
+   `config/ai-model-registry.example.json` (pre-populated with the latest Groq endpoints such as
+   `llama-3.3-70b-versatile`, `meta-llama/llama-4-maverick-17b-128e-instruct`,
+   `meta-llama/llama-4-scout-17b-16e-instruct`, `openai/gpt-oss-120b`, and `openai/gpt-oss-20b`) and
+   update it with the exact providers/models you’ve provisioned. Example:
+
+```json
+[
+   {
+      "id": "groq/llama-3.1-70b",
+      "label": "Groq Llama 3.1 70B",
+      "provider": "groq",
+      "model": "llama-3.1-70b-versatile",
+      "maxTokens": 2048,
+      "temperature": 0.4
+   }
+]
+```
+
+> **Note:** Nothing ships hardcoded anymore. If the registry is missing or empty the API will reject
+> requests, so be sure to keep the JSON in sync with whatever MCP/connector hub you point at next. The
+> `label` field controls the short name that appears in the dropdown, while the `model` field keeps the
+> exact provider ID you supplied (Groq, OpenAI, MCP, etc.).
 
 ### Development
 

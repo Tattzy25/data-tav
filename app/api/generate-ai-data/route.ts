@@ -1,9 +1,21 @@
 import { checkRateLimit, getClientIp } from "./rate-limit"
-import { sanitizeModel, DEFAULT_MODEL } from "./model-config"
-import { sanitizeContext, buildPrompt } from "./prompt-builder"
+import { requireModelDefinition } from "./model-config"
+import { sanitizeContext, buildPromptPayload } from "./prompt-builder"
 import { generateWithGroq } from "./ai-provider-groq"
 import { generateWithOpenAI } from "./ai-provider-openai"
 import { extractJsonArrayFromText } from "./json-extractor"
+
+type GenerateRequestBody = {
+  headers: unknown
+  rowCount: unknown
+  context?: unknown
+  model?: string
+  provider?: string
+  apiKey?: string
+  maxTokens?: unknown
+  temperature?: unknown
+  reasoning?: unknown
+}
 
 export async function POST(request: Request) {
   try {
@@ -20,13 +32,13 @@ export async function POST(request: Request) {
       headers,
       rowCount,
       context,
-      model = DEFAULT_MODEL,
-    }: {
-      headers: unknown
-      rowCount: unknown
-      context?: unknown
-      model?: string
-    } = await request.json()
+      model,
+      provider,
+      apiKey,
+      maxTokens,
+      temperature,
+      reasoning,
+    }: GenerateRequestBody = await request.json()
 
     // Validate and sanitize inputs
     if (!headers || !Array.isArray(headers) || headers.length === 0) {
@@ -52,29 +64,118 @@ export async function POST(request: Request) {
     }
 
     const sanitizedContext = sanitizeContext(context)
-    const sanitizedModel = sanitizeModel(model)
 
-    const prompt = buildPrompt(sanitizedHeaders, numericRowCount, sanitizedContext)
+    let modelDefinition
+    try {
+      modelDefinition = requireModelDefinition(model)
+    } catch (modelError) {
+      return Response.json(
+        { error: modelError instanceof Error ? modelError.message : "Model is not registered" },
+        { status: 400 },
+      )
+    }
+
+    if (provider && provider.toLowerCase() !== modelDefinition.provider.toLowerCase()) {
+      return Response.json(
+        {
+          error: `Provider mismatch. Expected \"${modelDefinition.provider}\" but received \"${provider}\".`,
+        },
+        { status: 400 },
+      )
+    }
+
+    const numericMaxTokens =
+      typeof maxTokens === "number" && Number.isFinite(maxTokens) && maxTokens > 0
+        ? Math.floor(maxTokens)
+        : undefined
+    if (maxTokens !== undefined && numericMaxTokens === undefined) {
+      return Response.json({ error: "maxTokens must be a positive number" }, { status: 400 })
+    }
+
+    const numericTemperature =
+      typeof temperature === "number" && temperature >= 0 && temperature <= 2 ? temperature : undefined
+    if (temperature !== undefined && numericTemperature === undefined) {
+      return Response.json({ error: "temperature must be between 0 and 2" }, { status: 400 })
+    }
+
+    const normalizedReasoning =
+      typeof reasoning === "string" && ["low", "medium", "high"].includes(reasoning)
+        ? (reasoning as "low" | "medium" | "high")
+        : undefined
+    if (reasoning && !normalizedReasoning) {
+      return Response.json({ error: "reasoning must be low, medium, or high" }, { status: 400 })
+    }
+
+    const { systemPrompt, userPrompt } = buildPromptPayload(sanitizedHeaders, numericRowCount, sanitizedContext)
+    const messages = [
+      {
+        role: "system" as const,
+        content: systemPrompt,
+      },
+      {
+        role: "user" as const,
+        content: userPrompt,
+      },
+    ]
+
+    const providerName = modelDefinition.provider.toLowerCase()
+    const baseModelId = modelDefinition.model ?? modelDefinition.id
+    const targetModel = baseModelId.startsWith(`${providerName}/`)
+      ? baseModelId.slice(providerName.length + 1)
+      : baseModelId
+    const overrideApiKey = typeof apiKey === "string" && apiKey.trim().length > 0 ? apiKey.trim() : undefined
+    const runtimeTemperature = numericTemperature ?? modelDefinition.temperature ?? 1
+    const runtimeMaxTokens = numericMaxTokens ?? modelDefinition.maxTokens
 
     let text: string
 
-    if (sanitizedModel.startsWith("groq/")) {
-      const groqApiKey = process.env.GROQ_API_KEY
+    if (providerName === "groq") {
+      const groqApiKey = overrideApiKey ?? process.env.GROQ_API_KEY
 
       if (!groqApiKey) {
         return Response.json(
-          { error: "Groq API key not configured. Please contact the administrator." },
+          {
+            error: "Groq API key not configured. Provide apiKey in the request or set GROQ_API_KEY.",
+          },
           { status: 500 },
         )
       }
 
-      text = await generateWithGroq(sanitizedModel, prompt, groqApiKey)
-    } else if (sanitizedModel.startsWith("openai/")) {
-      const openaiModel = sanitizedModel.replace("openai/", "")
-      text = await generateWithOpenAI(`openai/${openaiModel}`, prompt)
+      text = await generateWithGroq({
+        model: targetModel,
+        messages,
+        apiKey: groqApiKey,
+        temperature: runtimeTemperature,
+        maxTokens: runtimeMaxTokens,
+        reasoningEffort: normalizedReasoning,
+      })
+    } else if (providerName === "openai") {
+      const openaiApiKey = overrideApiKey ?? process.env.OPENAI_API_KEY
+
+      if (!openaiApiKey) {
+        return Response.json(
+          {
+            error: "OpenAI API key not configured. Provide apiKey in the request or set OPENAI_API_KEY.",
+          },
+          { status: 500 },
+        )
+      }
+
+      text = await generateWithOpenAI({
+        model: targetModel,
+        prompt,
+        apiKey: openaiApiKey,
+        temperature: runtimeTemperature,
+        maxTokens: runtimeMaxTokens,
+        reasoning: normalizedReasoning,
+      })
     } else {
-      // This branch should be unreachable due to sanitizeModel
-      return Response.json({ error: "Invalid model configuration" }, { status: 400 })
+      return Response.json(
+        {
+          error: `Provider \"${modelDefinition.provider}\" is not supported yet. Extend the API handler to integrate it.`,
+        },
+        { status: 400 },
+      )
     }
 
     const data = extractJsonArrayFromText(text)
