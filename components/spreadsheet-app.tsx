@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Link2, Table2, Download, Loader2, AlertCircle, Sparkles, Upload, Trash2 } from "lucide-react"
 import { Spreadsheet } from "./spreadsheet"
-import { RadioBrowser } from "./radio-browser"
 import { generateData, type ColumnConfig, exportToCSV, exportToJSON } from "@/lib/data-generator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
@@ -24,6 +23,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { ModelSelect } from "@/components/ui/model-select"
+import { AIConfigPopover, type AIConfig } from "@/components/ui/popover"
 
 const STORAGE_KEY = "brigit_ai_data"
 
@@ -34,8 +35,15 @@ export function SpreadsheetApp() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showClearDialog, setShowClearDialog] = useState(false)
+
+  // Model selection + advanced config (stored in localStorage via AIConfigPopover)
+  const [model, setModel] = useState("groq/openai/gpt-oss-120b")
+  const [aiConfig, setAiConfig] = useState<AIConfig | null>(null)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+
+  const resolvedModel = aiConfig?.modelId || model || "groq/openai/gpt-oss-120b"
 
   useEffect(() => {
     try {
@@ -185,7 +193,7 @@ export function SpreadsheetApp() {
     toast({ description: `Generated ${rowCount} rows with ${headers.length} columns` })
   }
 
-  const handleAIGenerate = async (headerInput: string, rowCount: number, context: string, model: string) => {
+  const handleAIGenerate = async (headerInput: string, rowCount: number, context: string, _model: string) => {
     const headers = headerInput
       .split(",")
       .map((h) => h.trim())
@@ -203,10 +211,25 @@ export function SpreadsheetApp() {
 
     setLoading(true)
     try {
+      const payload: any = {
+        headers,
+        rowCount,
+        context,
+        model: resolvedModel,
+      }
+
+      if (aiConfig) {
+        payload.provider = aiConfig.provider || null
+        payload.apiKey = aiConfig.apiKey || null
+        payload.maxTokens = aiConfig.maxTokens
+        payload.temperature = aiConfig.temperature
+        payload.reasoning = aiConfig.reasoning
+      }
+
       const response = await fetch("/api/generate-ai-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ headers, rowCount, context, model }),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -331,9 +354,9 @@ export function SpreadsheetApp() {
         onChange={handleImportFile}
         className="hidden"
       />
-      
+
       <Tabs defaultValue="url" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 max-w-3xl mx-auto">
+        <TabsList className="grid w-full grid-cols-3 max-w-3xl mx-auto">
           <TabsTrigger value="url" className="gap-2">
             <Link2 className="w-4 h-4" />
             From URL
@@ -345,10 +368,6 @@ export function SpreadsheetApp() {
           <TabsTrigger value="ai" className="gap-2">
             <Sparkles className="w-4 h-4" />
             AI Generate
-          </TabsTrigger>
-          <TabsTrigger value="radio" className="gap-2">
-            <Radio className="w-4 h-4" />
-            Radio
           </TabsTrigger>
         </TabsList>
 
@@ -402,43 +421,41 @@ export function SpreadsheetApp() {
         </TabsContent>
 
         <TabsContent value="ai" className="mt-6">
-          <AIGenerator onGenerate={handleAIGenerate} loading={loading} />
-        </TabsContent>
-
-        <TabsContent value="radio" className="mt-6">
-          <RadioBrowser />
+          <AIGenerator onGenerate={handleAIGenerate} loading={loading} model={resolvedModel} />
         </TabsContent>
       </Tabs>
 
       {data.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h2 className="text-2xl font-bold">Data Sheet</h2>
-              <p className="text-sm text-muted-foreground">
-                {data.length} rows × {columns.length} columns
-              </p>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm">
-                <Upload className="w-4 h-4 mr-2" />
-                Import Data
-              </Button>
-              <Button onClick={() => handleExport("csv")} variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </Button>
-              <Button onClick={() => handleExport("json")} variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" />
-                Export JSON
-              </Button>
-              <Button onClick={() => setShowClearDialog(true)} variant="outline" size="sm">
-                <Trash2 className="w-4 h-4 mr-2" />
-                Clear Data
-              </Button>
+          <div className="space-y-3 rounded-lg border bg-muted/40 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Data Sheet</h2>
+                <p className="text-sm text-muted-foreground">
+                  {data.length} rows  d7 {columns.length} columns
+                </p>
+              </div>
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-6">
+                <ModelSelect
+                  value={model}
+                  onValueChange={setModel}
+                  className="h-10 min-w-[230px] text-sm md:text-base"
+                  placeholder="Select model..."
+                />
+                <AIConfigPopover onConfigChange={setAiConfig} />
+              </div>
             </div>
           </div>
-          <Spreadsheet data={data} columns={columns} onDataChange={setData} onColumnsChange={setColumns} />
+          <Spreadsheet
+            data={data}
+            columns={columns}
+            onDataChange={setData}
+            onColumnsChange={setColumns}
+            onImportData={() => fileInputRef.current?.click()}
+            onExportCsv={() => handleExport("csv")}
+            onExportJson={() => handleExport("json")}
+            onClearData={() => setShowClearDialog(true)}
+          />
         </div>
       )}
 
@@ -447,7 +464,8 @@ export function SpreadsheetApp() {
           <AlertDialogHeader>
             <AlertDialogTitle>Clear all data?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete all your data and cannot be undone. Your session will also be cleared from storage.
+              This will permanently delete all your data and cannot be undone. Your session will also be cleared from
+              storage.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -523,11 +541,11 @@ function ManualGenerator({
 function AIGenerator({
   onGenerate,
   loading,
-}: { onGenerate: (headers: string, rows: number, context: string, model: string) => void; loading: boolean }) {
+  model,
+}: { onGenerate: (headers: string, rows: number, context: string, model: string) => void; loading: boolean; model: string }) {
   const [headers, setHeaders] = useState("")
   const [rows, setRows] = useState(10)
   const [context, setContext] = useState("")
-  const [model, setModel] = useState("groq/openai/gpt-oss-120b")
 
   return (
     <Card>
@@ -564,21 +582,9 @@ function AIGenerator({
             Provide context to make the AI generate more relevant and realistic data
           </p>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="ai-model">AI Model</Label>
-          <Select value={model} onValueChange={setModel}>
-            <SelectTrigger id="ai-model">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="openai/gpt-5-mini-2025-08-07">OpenAI GPT-5 Mini</SelectItem>
-              <SelectItem value="openai/gpt-5-nano-2025-08-07">OpenAI GPT-5 Nano</SelectItem>
-              <SelectItem value="groq/qwen-qwq-32b">Groq Qwen QWQ 32B</SelectItem>
-              <SelectItem value="groq/openai/gpt-oss-120b">Groq OpenAI GPT OSS 120B</SelectItem>
-              <SelectItem value="groq/openai/gpt-oss-20b">Groq OpenAI GPT OSS 20B</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          Using model: <span className="font-mono break-all">{model}</span>
+        </p>
         <div className="space-y-2">
           <Label htmlFor="ai-rows">Number of Rows (max 100)</Label>
           <Input
@@ -590,7 +596,11 @@ function AIGenerator({
             onChange={(e) => setRows(Number(e.target.value))}
           />
         </div>
-        <Button onClick={() => onGenerate(headers, rows, context, model)} disabled={!headers || loading} className="w-full">
+        <Button
+          onClick={() => onGenerate(headers, rows, context, model)}
+          disabled={!headers || loading}
+          className="w-full"
+        >
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
