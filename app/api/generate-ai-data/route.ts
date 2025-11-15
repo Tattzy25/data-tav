@@ -17,6 +17,52 @@ type GenerateRequestBody = {
   reasoning?: unknown
 }
 
+/**
+ * Retry a function with exponential backoff
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries = 2,
+  baseDelay = 1000,
+): Promise<T> {
+  let lastError: Error | unknown
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+
+      // Don't retry on certain errors
+      if (error instanceof Error) {
+        const message = error.message.toLowerCase()
+        // Don't retry on auth errors, invalid model, or client errors
+        if (
+          message.includes("invalid") ||
+          message.includes("401") ||
+          message.includes("404") ||
+          message.includes("not found") ||
+          message.includes("api key")
+        ) {
+          throw error
+        }
+      }
+
+      // If this was the last attempt, throw the error
+      if (attempt === maxRetries) {
+        break
+      }
+
+      // Wait before retrying with exponential backoff
+      const delay = baseDelay * Math.pow(2, attempt)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+  }
+
+  // If we get here, all retries failed
+  throw lastError
+}
+
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request)
@@ -141,14 +187,17 @@ export async function POST(request: Request) {
         )
       }
 
-      text = await generateWithGroq({
-        model: targetModel,
-        messages,
-        apiKey: groqApiKey,
-        temperature: runtimeTemperature,
-        maxTokens: runtimeMaxTokens,
-        reasoningEffort: normalizedReasoning,
-      })
+      // Use retry logic for Groq API calls
+      text = await retryWithBackoff(() =>
+        generateWithGroq({
+          model: targetModel,
+          messages,
+          apiKey: groqApiKey,
+          temperature: runtimeTemperature,
+          maxTokens: runtimeMaxTokens,
+          reasoningEffort: normalizedReasoning,
+        }),
+      )
     } else if (providerName === "openai") {
       const openaiApiKey = overrideApiKey ?? process.env.OPENAI_API_KEY
 
@@ -161,14 +210,20 @@ export async function POST(request: Request) {
         )
       }
 
-      text = await generateWithOpenAI({
-        model: targetModel,
-        prompt,
-        apiKey: openaiApiKey,
-        temperature: runtimeTemperature,
-        maxTokens: runtimeMaxTokens,
-        reasoning: normalizedReasoning,
-      })
+      // Combine system and user prompts for OpenAI API
+      const combinedPrompt = `${systemPrompt}\n\n${userPrompt}`
+
+      // Use retry logic for OpenAI API calls
+      text = await retryWithBackoff(() =>
+        generateWithOpenAI({
+          model: targetModel,
+          prompt: combinedPrompt,
+          apiKey: openaiApiKey,
+          temperature: runtimeTemperature,
+          maxTokens: runtimeMaxTokens,
+          reasoning: normalizedReasoning,
+        }),
+      )
     } else {
       return Response.json(
         {
@@ -183,8 +238,94 @@ export async function POST(request: Request) {
     return Response.json({ data })
   } catch (error) {
     console.error("AI generation error:", error)
+
+    // Provide specific error responses based on error type
+    if (error instanceof Error) {
+      const message = error.message
+
+      // Rate limiting errors
+      if (message.includes("rate limit")) {
+        return Response.json(
+          {
+            error: message,
+            suggestion: "Please wait a moment before making another request.",
+          },
+          { status: 429 },
+        )
+      }
+
+      // Timeout errors
+      if (message.includes("timeout")) {
+        return Response.json(
+          {
+            error: message,
+            suggestion: "Try reducing the number of rows or simplifying your request.",
+          },
+          { status: 504 },
+        )
+      }
+
+      // Authentication errors
+      if (message.includes("API key") || message.includes("401")) {
+        return Response.json(
+          {
+            error: message,
+            suggestion: "Check your API key configuration in environment variables or request body.",
+          },
+          { status: 401 },
+        )
+      }
+
+      // Model not found errors
+      if (message.includes("not found") || message.includes("404")) {
+        return Response.json(
+          {
+            error: message,
+            suggestion: "Select a different model from the dropdown.",
+          },
+          { status: 404 },
+        )
+      }
+
+      // JSON parsing errors
+      if (message.includes("parse") || message.includes("JSON")) {
+        return Response.json(
+          {
+            error: "Failed to parse AI response as valid data.",
+            details: message,
+            suggestion: "The AI model may have returned an unexpected format. Please try again.",
+          },
+          { status: 500 },
+        )
+      }
+
+      // Service unavailable
+      if (message.includes("unavailable") || message.includes("503")) {
+        return Response.json(
+          {
+            error: message,
+            suggestion: "The AI service is temporarily unavailable. Please try again in a few moments.",
+          },
+          { status: 503 },
+        )
+      }
+
+      // Generic error with message
+      return Response.json(
+        {
+          error: message,
+          suggestion: "If this problem persists, please contact support.",
+        },
+        { status: 500 },
+      )
+    }
+
+    // Unknown error type
     return Response.json(
-      { error: error instanceof Error ? error.message : "Failed to generate data" },
+      {
+        error: "An unexpected error occurred while generating data.",
+        suggestion: "Please try again. If the problem persists, contact support.",
+      },
       { status: 500 },
     )
   }

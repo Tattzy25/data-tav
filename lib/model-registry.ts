@@ -40,23 +40,56 @@ export type ModelDefinition = z.infer<typeof ModelDefinitionSchema>
 
 let cachedRegistry: ModelDefinition[] | null = null
 
-function resolveRegistrySource(): string {
-  if (process.env.AI_MODEL_REGISTRY_FILE) {
-    const registryPath = process.env.AI_MODEL_REGISTRY_FILE
-    const absolutePath = path.isAbsolute(registryPath)
-      ? registryPath
-      : path.join(process.cwd(), registryPath)
+/**
+ * Hardcoded fallback model registry for production deployments
+ * Used when no registry file or environment variable is configured
+ */
+const FALLBACK_MODEL_REGISTRY: ModelDefinition[] = [
+  {
+    id: "groq/llama-3.3-70b-versatile",
+    label: "Llama 3.3 70B (Groq)",
+    provider: "groq",
+    model: "llama-3.3-70b-versatile",
+    maxTokens: 4096,
+    temperature: 0.4,
+  },
+  {
+    id: "groq/llama-3.1-70b-versatile",
+    label: "Llama 3.1 70B (Groq)",
+    provider: "groq",
+    model: "llama-3.1-70b-versatile",
+    maxTokens: 2048,
+    temperature: 0.4,
+  },
+]
 
-    return fs.readFileSync(absolutePath, "utf8")
+function resolveRegistrySource(): string | null {
+  // Try file-based registry first
+  if (process.env.AI_MODEL_REGISTRY_FILE) {
+    try {
+      const registryPath = process.env.AI_MODEL_REGISTRY_FILE
+      const absolutePath = path.isAbsolute(registryPath)
+        ? registryPath
+        : path.join(process.cwd(), registryPath)
+
+      if (fs.existsSync(absolutePath)) {
+        return fs.readFileSync(absolutePath, "utf8")
+      }
+      console.warn(
+        `AI_MODEL_REGISTRY_FILE points to non-existent file: ${absolutePath}. Falling back to default registry.`,
+      )
+    } catch (error) {
+      console.warn(`Failed to read AI_MODEL_REGISTRY_FILE:`, error)
+    }
   }
 
+  // Try environment variable registry
   if (process.env.AI_MODEL_REGISTRY) {
     return process.env.AI_MODEL_REGISTRY
   }
 
-  throw new Error(
-    "AI model registry is not configured. Set AI_MODEL_REGISTRY or AI_MODEL_REGISTRY_FILE to continue.",
-  )
+  // Return null to use fallback
+  return null
 }
 
 function parseRegistry(raw: string): ModelDefinition[] {
@@ -70,8 +103,24 @@ export function listModelDefinitions(): ModelDefinition[] {
   }
 
   const raw = resolveRegistrySource()
-  cachedRegistry = parseRegistry(raw)
-  return cachedRegistry
+
+  // Use hardcoded fallback if no registry is configured
+  if (!raw) {
+    console.warn(
+      "No AI model registry configured (AI_MODEL_REGISTRY or AI_MODEL_REGISTRY_FILE). Using fallback registry.",
+    )
+    cachedRegistry = FALLBACK_MODEL_REGISTRY
+    return cachedRegistry
+  }
+
+  try {
+    cachedRegistry = parseRegistry(raw)
+    return cachedRegistry
+  } catch (error) {
+    console.error("Failed to parse AI model registry, using fallback:", error)
+    cachedRegistry = FALLBACK_MODEL_REGISTRY
+    return cachedRegistry
+  }
 }
 
 export function getModelDefinition(modelId: string): ModelDefinition {
