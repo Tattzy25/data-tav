@@ -1,4 +1,4 @@
-import { checkRateLimit, getClientIp } from "./rate-limit"
+import { checkRateLimit, getClientIp, getRateLimitInfo } from "./rate-limit"
 import { requireModelDefinition } from "./model-config"
 import { sanitizeContext, buildPromptPayload } from "./prompt-builder"
 import { generateWithGroq } from "./ai-provider-groq"
@@ -67,10 +67,25 @@ export async function POST(request: Request) {
   try {
     const ip = getClientIp(request)
 
+    // Check rate limit
     if (!checkRateLimit(ip, 10, 60000)) {
+      const rateLimitInfo = getRateLimitInfo(ip, 10)
+      const retryAfter = Math.ceil((rateLimitInfo.resetTime - Date.now()) / 1000)
+
       return Response.json(
-        { error: "Rate limit exceeded. Please try again later." },
-        { status: 429 },
+        {
+          error: "Rate limit exceeded. Please try again later.",
+          retryAfter: retryAfter,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": "10",
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": rateLimitInfo.resetTime.toString(),
+            "Retry-After": retryAfter.toString(),
+          },
+        },
       )
     }
 
@@ -235,7 +250,18 @@ export async function POST(request: Request) {
 
     const data = extractJsonArrayFromText(text)
 
-    return Response.json({ data })
+    // Add rate limit headers to successful response
+    const rateLimitInfo = getRateLimitInfo(ip, 10)
+    return Response.json(
+      { data },
+      {
+        headers: {
+          "X-RateLimit-Limit": "10",
+          "X-RateLimit-Remaining": rateLimitInfo.remaining.toString(),
+          "X-RateLimit-Reset": rateLimitInfo.resetTime.toString(),
+        },
+      },
+    )
   } catch (error) {
     console.error("AI generation error:", error)
 
