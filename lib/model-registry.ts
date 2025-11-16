@@ -32,6 +32,53 @@ const ModelDefinitionSchema = z.object({
    * Default max completion tokens for this model.
    */
   maxTokens: z.number().int().positive().optional(),
+  /**
+   * Optional capabilities and integration flags for this model.
+   * These are used by the UI / API layer to decide
+   * whether to enable browser search, MCP, etc.
+   */
+  capabilities: z
+    .object({
+      /** Built-in browser search tools available for this model. */
+      browserSearch: z
+        .object({
+          enabled: z.boolean().default(false),
+        })
+        .optional(),
+      /** Code interpreter / sandbox availability. */
+      codeInterpreter: z
+        .object({
+          enabled: z.boolean().default(false),
+        })
+        .optional(),
+      /** MCP server wiring (e.g. Tavily). */
+      mcp: z
+        .object({
+          tavily: z
+            .object({
+              enabled: z.boolean().default(false),
+            })
+            .optional(),
+        })
+        .optional(),
+      /** Whether the model supports function calling tools. */
+      functions: z
+        .object({
+          enabled: z.boolean().default(false),
+        })
+        .optional(),
+      /** Default streaming preference for this model. */
+      modes: z
+        .object({
+          streamDefault: z.boolean().default(true),
+        })
+        .optional(),
+      /** Optional default random seed. */
+      seed: z.number().int().optional(),
+      /** Optional default top_p value. */
+      topP: z.number().min(0).max(1).optional(),
+    })
+    .optional(),
 })
 
 const RegistrySchema = z.array(ModelDefinitionSchema).min(1, "AI model registry must include at least one model")

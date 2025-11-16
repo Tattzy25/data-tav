@@ -106,7 +106,11 @@ export async function POST(request: Request) {
       return Response.json({ error: "reasoning must be low, medium, or high" }, { status: 400 })
     }
 
-    const { systemPrompt, userPrompt } = buildPromptPayload(sanitizedHeaders, numericRowCount, sanitizedContext)
+    const { systemPrompt, userPrompt } = buildPromptPayload(
+      sanitizedHeaders,
+      numericRowCount,
+      sanitizedContext,
+    )
     const messages = [
       {
         role: "system" as const,
@@ -129,6 +133,7 @@ export async function POST(request: Request) {
 
     let text: string
 
+    // Prefer Groq by default when available
     if (providerName === "groq") {
       const groqApiKey = overrideApiKey ?? process.env.GROQ_API_KEY
 
@@ -163,7 +168,8 @@ export async function POST(request: Request) {
 
       text = await generateWithOpenAI({
         model: targetModel,
-        prompt,
+        // For OpenAI we send a single combined prompt using the user prompt
+        prompt: userPrompt,
         apiKey: openaiApiKey,
         temperature: runtimeTemperature,
         maxTokens: runtimeMaxTokens,
