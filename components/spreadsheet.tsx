@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Trash2, Undo2, Redo2, ArrowUpDown, Search, Copy } from "lucide-react"
+import { Plus, Trash2, Undo2, Redo2, ArrowUpDown, Search, Copy, Upload, Download } from "lucide-react"
 import type { ColumnConfig } from "@/lib/data-generator"
 import { useToast } from "@/hooks/use-toast"
 
@@ -14,6 +14,10 @@ interface SpreadsheetProps {
   columns: ColumnConfig[]
   onDataChange: (data: Record<string, any>[]) => void
   onColumnsChange: (columns: ColumnConfig[]) => void
+  onImportData?: () => void
+  onExportCsv?: () => void
+  onExportJson?: () => void
+  onClearData?: () => void
 }
 
 interface HistoryState {
@@ -21,7 +25,16 @@ interface HistoryState {
   columns: ColumnConfig[]
 }
 
-export function Spreadsheet({ data, columns, onDataChange, onColumnsChange }: SpreadsheetProps) {
+export function Spreadsheet({
+  data,
+  columns,
+  onDataChange,
+  onColumnsChange,
+  onImportData,
+  onExportCsv,
+  onExportJson,
+  onClearData,
+}: SpreadsheetProps) {
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null)
   const [editingCell, setEditingCell] = useState<{ row: number; col: number } | null>(null)
   const [editValue, setEditValue] = useState("")
@@ -322,8 +335,38 @@ export function Spreadsheet({ data, columns, onDataChange, onColumnsChange }: Sp
             className="h-9"
           />
         </div>
-        <div className="text-xs text-muted-foreground hidden lg:block">
-          Ctrl+C (Copy) • Ctrl+V (Paste) • Delete (Clear) • Enter (Edit) • Tab (Next) • Arrows (Navigate)
+        <div className="flex items-center gap-3 flex-wrap justify-end">
+          <div className="text-xs text-muted-foreground hidden xl:block">
+            Ctrl+C (Copy) • Ctrl+V (Paste) • Delete (Clear) • Enter (Edit) • Tab (Next) • Arrows (Navigate)
+          </div>
+          {(onImportData || onExportCsv || onExportJson || onClearData) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {onImportData && (
+                <Button variant="outline" size="sm" onClick={onImportData} title="Import CSV or JSON">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import
+                </Button>
+              )}
+              {onExportCsv && (
+                <Button variant="outline" size="sm" onClick={onExportCsv} title="Export as CSV">
+                  <Download className="w-4 h-4 mr-2" />
+                  CSV
+                </Button>
+              )}
+              {onExportJson && (
+                <Button variant="outline" size="sm" onClick={onExportJson} title="Export as JSON">
+                  <Download className="w-4 h-4 mr-2" />
+                  JSON
+                </Button>
+              )}
+              {onClearData && (
+                <Button variant="outline" size="sm" onClick={onClearData} title="Clear data">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

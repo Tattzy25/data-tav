@@ -18,6 +18,8 @@ yarn-error.log*
 
 # env files
 .env*
+.env*.local
+!.env.example
 
 # vercel
 .vercel
@@ -27,3 +29,6 @@ yarn-error.log*
 next-env.d.ts
 .vercel
 .env*.local
+
+# config files (use .example versions as templates)
+config/ai-model-registry.json
