@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Link2, Table2, Download, Loader2, AlertCircle, Sparkles, Upload, Trash2 } from "lucide-react"
-import { Spreadsheet } from "./spreadsheet"
+import { Spreadsheet } from "./shared/spreadsheet/index"
 import { generateData, type ColumnConfig, exportToCSV, exportToJSON } from "@/lib/data-generator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
@@ -32,6 +32,7 @@ export function SpreadsheetApp() {
   const [data, setData] = useState<Record<string, any>[]>([])
   const [columns, setColumns] = useState<ColumnConfig[]>([])
   const [url, setUrl] = useState("")
+  const [headers, setHeaders] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showClearDialog, setShowClearDialog] = useState(false)
@@ -112,49 +113,67 @@ export function SpreadsheetApp() {
       return
     }
 
+    if (!resolvedModel) {
+      setError("Please select an AI model first")
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     try {
-      const response = await fetch(url)
+      const prompt = `Generate sample data for the following API endpoint: ${url}${
+        headers ? `\n\nUse these column headers: ${headers}` : ""
+      }\n\nGenerate 10 rows of realistic sample data in JSON format.`
+
+      const response = await fetch("/api/generate-ai-data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          model: resolvedModel,
+          maxTokens: aiConfig?.maxTokens || 1000,
+          temperature: aiConfig?.temperature || 0.7,
+        }),
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`Failed to generate data: ${response.status}`)
       }
 
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("URL must return JSON data")
+      const result = await response.json()
+
+      // Parse the generated data
+      let generatedData
+      try {
+        // Try to extract JSON from the response
+        const jsonMatch = result.data.match(/```json\s*([\s\S]*?)\s*```/) || 
+                         result.data.match(/```\s*([\s\S]*?)\s*```/) ||
+                         result.data.match(/(\[[\s\S]*\])/)
+
+        const jsonString = jsonMatch ? jsonMatch[1] : result.data
+        generatedData = JSON.parse(jsonString.trim())
+      } catch (parseError) {
+        throw new Error("Failed to parse generated data as JSON")
       }
 
-      const jsonData = await response.json()
-
-      // Handle array of objects
-      if (Array.isArray(jsonData) && jsonData.length > 0) {
-        const firstItem = jsonData[0]
+      if (Array.isArray(generatedData) && generatedData.length > 0) {
+        const firstItem = generatedData[0]
         const detectedColumns: ColumnConfig[] = Object.keys(firstItem).map((key, index) => ({
           id: String(index),
           name: key,
           type: detectDataType(firstItem[key]),
         }))
         setColumns(detectedColumns)
-        setData(jsonData.map((item, idx) => ({ id: String(idx), ...item })))
-        toast({ description: `Successfully loaded ${jsonData.length} rows` })
-      } else if (typeof jsonData === "object" && jsonData !== null) {
-        // Handle single object
-        const detectedColumns: ColumnConfig[] = Object.keys(jsonData).map((key, index) => ({
-          id: String(index),
-          name: key,
-          type: detectDataType(jsonData[key]),
-        }))
-        setColumns(detectedColumns)
-        setData([{ id: "0", ...jsonData }])
-        toast({ description: "Successfully loaded 1 row" })
+        setData(generatedData.map((item, idx) => ({ id: String(idx), ...item })))
+        toast({ description: `Generated ${generatedData.length} rows` })
       } else {
-        throw new Error("Invalid JSON format. Expected an array of objects or a single object.")
+        throw new Error("Generated data is not a valid array")
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to fetch data from URL"
+      const errorMessage = err instanceof Error ? err.message : "Failed to generate data from URL"
       setError(errorMessage)
       toast({
         description: errorMessage,
@@ -360,6 +379,21 @@ export function SpreadsheetApp() {
         className="hidden"
       />
 
+      {/* Model Selection - Always Visible */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-6 p-4 rounded-lg border bg-muted/40">
+        <div className="text-center sm:text-left">
+          <h3 className="text-lg font-semibold">AI Model</h3>
+          <p className="text-sm text-muted-foreground">Select a model to generate data</p>
+        </div>
+        <ModelSelect
+          value={model}
+          onValueChange={setModel}
+          className="h-10 min-w-[230px] text-sm md:text-base"
+          placeholder="Select model..."
+        />
+        <AIConfigPopover onConfigChange={setAiConfig} />
+      </div>
+
       <Tabs defaultValue="url" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-3xl mx-auto">
           <TabsTrigger value="url" className="gap-2">
@@ -380,7 +414,7 @@ export function SpreadsheetApp() {
           <Card>
             <CardHeader>
               <CardTitle>Generate from URL</CardTitle>
-              <CardDescription>Enter any API URL to fetch data and automatically extract headers</CardDescription>
+              <CardDescription>Enter a URL and optional headers to generate AI data based on that endpoint</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {error && (
@@ -390,10 +424,10 @@ export function SpreadsheetApp() {
                 </Alert>
               )}
               <div className="space-y-2">
-                <Label htmlFor="url-input">API URL</Label>
+                <Label htmlFor="url-input">URL</Label>
                 <Input
                   id="url-input"
-                  placeholder="https://jsonplaceholder.typicode.com/users"
+                  placeholder="https://api.example.com/users"
                   value={url}
                   onChange={(e) => {
                     setUrl(e.target.value)
@@ -405,16 +439,27 @@ export function SpreadsheetApp() {
                     }
                   }}
                 />
-                <p className="text-xs text-muted-foreground">Try: https://jsonplaceholder.typicode.com/users</p>
+                <p className="text-xs text-muted-foreground">Enter the URL you want to generate data for</p>
               </div>
-              <Button onClick={handleGenerateFromURL} disabled={loading || !url} className="w-full">
+              <div className="space-y-2">
+                <Label htmlFor="headers-input">Headers (optional)</Label>
+                <Textarea
+                  id="headers-input"
+                  placeholder="name, email, age, city"
+                  value={headers}
+                  onChange={(e) => setHeaders(e.target.value)}
+                  rows={2}
+                />
+                <p className="text-xs text-muted-foreground">Comma-separated list of column headers to generate</p>
+              </div>
+              <Button onClick={handleGenerateFromURL} disabled={loading || !url || !resolvedModel} className="w-full">
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Fetching...
+                    Generating...
                   </>
                 ) : (
-                  "Fetch & Generate"
+                  "Generate Data"
                 )}
               </Button>
             </CardContent>
@@ -430,39 +475,39 @@ export function SpreadsheetApp() {
         </TabsContent>
       </Tabs>
 
-      {data.length > 0 && (
-        <div className="space-y-4">
+      {/* Always visible spreadsheet */}
+      <div className="space-y-4">
+        {data.length > 0 && (
           <div className="space-y-3 rounded-lg border bg-muted/40 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-2xl font-bold">Data Sheet</h2>
                 <p className="text-sm text-muted-foreground">
-                  {data.length} rows  d7 {columns.length} columns
+                  {data.length} rows × {columns.length} columns
                 </p>
-              </div>
-              <div className="flex-1 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-6">
-                <ModelSelect
-                  value={model}
-                  onValueChange={setModel}
-                  className="h-10 min-w-[230px] text-sm md:text-base"
-                  placeholder="Select model..."
-                />
-                <AIConfigPopover onConfigChange={setAiConfig} />
               </div>
             </div>
           </div>
-          <Spreadsheet
-            data={data}
-            columns={columns}
-            onDataChange={setData}
-            onColumnsChange={setColumns}
-            onImportData={() => fileInputRef.current?.click()}
-            onExportCsv={() => handleExport("csv")}
-            onExportJson={() => handleExport("json")}
-            onClearData={() => setShowClearDialog(true)}
-          />
-        </div>
-      )}
+        )}
+        {data.length === 0 && (
+          <div className="space-y-3 rounded-lg border bg-muted/40 p-4 text-center">
+            <h2 className="text-2xl font-bold">Data Sheet</h2>
+            <p className="text-sm text-muted-foreground">
+              No data yet. Use the tabs above to generate or import data.
+            </p>
+          </div>
+        )}
+        <Spreadsheet
+          data={data}
+          columns={columns}
+          onDataChange={setData}
+          onColumnsChange={setColumns}
+          onImportData={() => fileInputRef.current?.click()}
+          onExportCsv={() => handleExport("csv")}
+          onExportJson={() => handleExport("json")}
+          onClearData={() => setShowClearDialog(true)}
+        />
+      </div>
 
       <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
         <AlertDialogContent>
