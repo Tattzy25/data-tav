@@ -8,6 +8,11 @@ export interface SpreadsheetProps {
   onImportData?: () => void
   onExportCsv?: () => void
   onExportJson?: () => void
+  onExportSql?: () => void
+  onExportNeonSql?: () => void
+  onExportSupabaseSql?: () => void
+  onExportPdf?: () => void
+  onRefreshData?: () => void
   onClearData?: () => void
 }
 

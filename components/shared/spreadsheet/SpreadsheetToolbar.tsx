@@ -1,6 +1,6 @@
+import { ButtonGroupInput } from "@/components/search-bar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Undo2, Redo2, Search, Upload, Download, Trash2 } from "lucide-react"
+import { Undo2, Redo2, Upload, Download, Trash2 } from "lucide-react"
 
 interface SpreadsheetToolbarProps {
   canUndo: boolean
@@ -28,54 +28,84 @@ export function SpreadsheetToolbar({
   onClearData,
 }: SpreadsheetToolbarProps) {
   return (
-    <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg border flex-wrap gap-3">
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button variant="outline" size="sm" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-          <Undo2 className="w-4 h-4 mr-2" />
-          Undo
+    <div className="flex h-[100px] flex-wrap items-center gap-4 rounded-lg border border-border/80 bg-muted/50 px-3 py-2">
+      <ButtonGroupInput
+        value={searchTerm}
+        onChange={onSearchChange}
+        placeholder="Search data"
+        className="w-64"
+      />
+      <div className="ml-auto flex flex-wrap items-center gap-2 py-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onUndo}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+          className="h-20 w-20 rounded-2xl border-2 border-border p-0 text-white shadow-[0_6px_16px_rgba(0,0,0,0.6)] transition-colors hover:border-yellow-400 hover:bg-yellow-200/20 focus-visible:ring-2 focus-visible:ring-yellow-400 active:bg-yellow-300 active:text-foreground"
+        >
+          <Undo2 className="h-5 w-5" />
+          <span className="sr-only">Undo</span>
         </Button>
-        <Button variant="outline" size="sm" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
-          <Redo2 className="w-4 h-4 mr-2" />
-          Redo
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRedo}
+          disabled={!canRedo}
+          title="Redo (Ctrl+Shift+Z)"
+          className="h-20 w-20 rounded-2xl border-2 border-border p-0 text-white shadow-[0_6px_16px_rgba(0,0,0,0.6)] transition-colors hover:border-yellow-400 hover:bg-yellow-200/20 focus-visible:ring-2 focus-visible:ring-yellow-400 active:bg-yellow-300 active:text-foreground"
+        >
+          <Redo2 className="h-4 w-4" />
+          <span className="sr-only">Redo</span>
         </Button>
-      </div>
-      <div className="flex items-center gap-2 flex-1 max-w-md">
-        <Search className="w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search data..."
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="h-9"
-        />
-      </div>
-      <div className="flex items-center gap-3 flex-wrap justify-end">
-        <div className="text-xs text-muted-foreground hidden xl:block">
-          Ctrl+C (Copy) • Ctrl+V (Paste) • Delete (Clear) • Enter (Edit) • Tab (Next) • Arrows (Navigate)
-        </div>
         {(onImportData || onExportCsv || onExportJson || onClearData) && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
             {onImportData && (
-              <Button variant="outline" size="sm" onClick={onImportData} title="Import CSV or JSON">
-                <Upload className="w-4 h-4 mr-2" />
-                Import
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onImportData}
+                title="Import CSV or JSON"
+                className="h-20 w-20 rounded-2xl border-2 border-border p-0 text-white shadow-[0_6px_16px_rgba(0,0,0,0.6)] transition-colors hover:border-yellow-400 hover:bg-yellow-200/20 focus-visible:ring-2 focus-visible:ring-yellow-400 active:bg-yellow-300 active:text-foreground"
+              >
+                <Upload className="h-4 w-4" />
+                <span className="sr-only">Import</span>
               </Button>
             )}
             {onExportCsv && (
-              <Button variant="outline" size="sm" onClick={onExportCsv} title="Export as CSV">
-                <Download className="w-4 h-4 mr-2" />
-                CSV
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onExportCsv}
+                title="Export as CSV"
+                className="h-20 w-20 rounded-2xl border-2 border-border p-0 text-white shadow-[0_6px_16px_rgba(0,0,0,0.6)] transition-colors hover:border-yellow-400 hover:bg-yellow-200/20 focus-visible:ring-2 focus-visible:ring-yellow-400 active:bg-yellow-300 active:text-foreground"
+              >
+                <Download className="h-4 w-4" />
+                <span className="sr-only">Export CSV</span>
               </Button>
             )}
             {onExportJson && (
-              <Button variant="outline" size="sm" onClick={onExportJson} title="Export as JSON">
-                <Download className="w-4 h-4 mr-2" />
-                JSON
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onExportJson}
+                title="Export as JSON"
+                className="h-20 w-20 rounded-2xl border-2 border-border p-0 text-white shadow-[0_6px_16px_rgba(0,0,0,0.6)] transition-colors hover:border-yellow-400 hover:bg-yellow-200/20 focus-visible:ring-2 focus-visible:ring-yellow-400 active:bg-yellow-300 active:text-foreground"
+              >
+                <Download className="h-4 w-4" />
+                <span className="sr-only">Export JSON</span>
               </Button>
             )}
             {onClearData && (
-              <Button variant="outline" size="sm" onClick={onClearData} title="Clear data">
-                <Trash2 className="w-4 h-4 mr-2" />
-                Clear
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClearData}
+                title="Clear data"
+                className="h-20 w-20 rounded-2xl border-2 border-border p-0 text-white shadow-[0_6px_16px_rgba(0,0,0,0.6)] transition-colors hover:border-yellow-400 hover:bg-yellow-200/20 focus-visible:ring-2 focus-visible:ring-yellow-400 active:bg-yellow-300 active:text-foreground"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only">Clear data</span>
               </Button>
             )}
           </div>

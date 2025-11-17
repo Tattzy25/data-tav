@@ -22,6 +22,11 @@ export function Spreadsheet({
   onImportData,
   onExportCsv,
   onExportJson,
+  onExportSql,
+  onExportNeonSql,
+  onExportSupabaseSql,
+  onExportPdf,
+  onRefreshData,
   onClearData,
 }: SpreadsheetProps) {
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null)
@@ -30,7 +35,7 @@ export function Spreadsheet({
   const inputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm] = useState("")
   const [sortConfig, setSortConfig] = useState<{ columnId: string; direction: "asc" | "desc" } | null>(null)
 
   const { saveToHistory, undo: undoHistory, redo: redoHistory, canUndo, canRedo } = useHistory(data, columns)
@@ -258,11 +263,14 @@ export function Spreadsheet({
             toast({ description: "Redo successful" })
           }
         }}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
         onImportData={onImportData}
         onExportCsv={onExportCsv}
         onExportJson={onExportJson}
+        onExportSql={onExportSql}
+        onExportNeonSql={onExportNeonSql}
+        onExportSupabaseSql={onExportSupabaseSql}
+        onExportPdf={onExportPdf}
+        onRefreshData={onRefreshData}
         onClearData={onClearData}
       />
       <SpreadsheetTable

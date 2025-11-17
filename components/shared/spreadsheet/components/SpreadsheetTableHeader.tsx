@@ -33,11 +33,11 @@ export function SpreadsheetTableHeader({
                 className="border-0 rounded-none font-medium text-center bg-transparent"
                 placeholder="Column name"
               />
-              <div className="flex items-center gap-1 absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 absolute right-1 text-white">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-7 w-7 text-white hover:bg-white/10"
                   onClick={() => onSort(col.id)}
                   title="Sort column"
                 >
@@ -46,7 +46,7 @@ export function SpreadsheetTableHeader({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-7 w-7 text-white hover:bg-white/10"
                   onClick={() => onCopyColumn(colIndex)}
                   title="Copy column"
                 >
@@ -55,7 +55,7 @@ export function SpreadsheetTableHeader({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-7 w-7 text-white hover:bg-white/10"
                   onClick={() => onRemoveColumn(colIndex)}
                   title="Delete column"
                 >
