@@ -13,16 +13,28 @@ No more waiting. No more begging. No more fighting with AI. Brigit AI is here, a
 ## Domain
 
 [Brigit-ai.com](https://brigit-ai.com)
+
+## How the App Flows
+
+1. **Pick a model** – The Model Config panel (top of the home page) reads from `config/ai-model-registry.json`. Select a registry entry or paste a temporary API key/config override. The step indicator highlights "Model" until a selection exists.
+1. **Choose a source** – `SourceTabs` exposes three generation modes:
+   - **From URL**: provide an API endpoint plus optional headers list. We call `/api/generate-ai-data`, passing the URL context so the selected model can synthesize 10 preview rows.
+   - **Manual**: enter comma-separated headers, row count (1–10k), and orientation. Rows are generated locally via `lib/data-generator` for instant prototyping.
+   - **AI Generate**: describe headers + optional context. The selected model streams back up to 100 rows of realistic content.
+1. **Review & export** – The Spreadsheet view (toolbar + grid) becomes available once data exists. Use the toolbar to import CSV/JSON, export, undo/redo, or clear. Column headers expose always-on actions (sort, duplicate, delete). Changes persist in localStorage through the data workbench hook.
+
+This is the only workflow every feature feeds into: configure → source → preview/export. Each feature below maps to one of those phases.
+
 ## Features
 
-✨ **AI-Powered Data Generation** - Generate realistic, context-aware data using OpenAI or Groq models  
-📊 **Manual Data Generation** - Create custom datasets with your own headers and specifications  
-🔗 **URL Data Import** - Fetch and import data from any JSON API endpoint  
-📥 **Import/Export** - Import CSV/JSON files and export your data in multiple formats  
-💾 **Auto-Save** - Your data is automatically saved to localStorage and restored on return  
-🎨 **Interactive Spreadsheet** - Edit cells inline, visualize data with charts  
-⌨️ **Keyboard Shortcuts** - Power user features for faster workflow  
-🔒 **Production Ready** - Security headers, rate limiting, error boundaries, and more
+✨ **AI-Powered Data Generation** – Use Groq, OpenAI, or registry-defined MCP providers via the AI Generate tab.  
+🔗 **Contextual URL Boost** – Supply any JSON endpoint and let the model synthesize matching rows.  
+📊 **Manual/Matrix Builder** – Define headers manually, choose row count/orientation, and get instant local mock data.  
+📥 **Import/Export + Undo/Redo** – Spreadsheet toolbar handles CSV/JSON import/export, undo, redo, and destructive clears with confirmation.  
+💾 **Session Persistence** – Data, columns, and user actions are cached with `useDataWorkbench` so refreshes restore state.  
+🎨 **Interactive Spreadsheet** – Column actions (sort, duplicate, delete), inline editing, and responsive toolbar built on our shared spreadsheet package.  
+⌨️ **Keyboard Shortcuts** – `Ctrl/Cmd+E` CSV export, `Shift+E` JSON export, `I` import, `K` clear.  
+🔒 **Production Ready** – Security headers, rate limiting, error boundaries, and flexible model registry keep the app safe in prod.
 
 ## Getting Started
 
@@ -34,22 +46,27 @@ No more waiting. No more begging. No more fighting with AI. Brigit AI is here, a
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/Tattzy25/data-tav.git
 cd data-tav
 ```
 
-2. Install dependencies:
+1. Install dependencies (pnpm preferred):
+
 ```bash
-npm install
+pnpm install
+# or npm install
 ```
 
-3. Set up environment variables:
+1. Set up environment variables:
+
 ```bash
 cp .env.example .env.local
 ```
 
-4. Add your API keys to `.env.local`:
+1. Add your API keys to `.env.local`:
+
 ```env
 # For OpenAI models (optional)
 OPENAI_API_KEY=your_openai_api_key_here
@@ -61,7 +78,7 @@ GROQ_API_KEY=your_groq_api_key_here
 AI_MODEL_REGISTRY_FILE=config/ai-model-registry.json
 ```
 
-5. Define the registry file referenced above. Start from the sample in
+1. Define the registry file referenced above. Start from the sample in
    `config/ai-model-registry.example.json` (pre-populated with the latest Groq endpoints such as
    `llama-3.3-70b-versatile`, `meta-llama/llama-4-maverick-17b-128e-instruct`,
    `meta-llama/llama-4-scout-17b-16e-instruct`, `openai/gpt-oss-120b`, and `openai/gpt-oss-20b`) and
@@ -88,8 +105,9 @@ AI_MODEL_REGISTRY_FILE=config/ai-model-registry.json
 ### Development
 
 Run the development server:
+
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -97,13 +115,15 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### Production Build
 
 Build the application:
+
 ```bash
-npm run build
+pnpm build
 ```
 
 Start the production server:
+
 ```bash
-npm start
+pnpm start
 ```
 
 ## Deployment
@@ -120,6 +140,7 @@ npm start
 ### Deploy to Other Platforms
 
 Brigit AI is a Next.js application and can be deployed to any platform that supports Next.js:
+
 - Netlify
 - Railway
 - Render
@@ -139,18 +160,21 @@ Refer to the [Next.js deployment documentation](https://nextjs.org/docs/deployme
 ## Usage
 
 ### Generate from URL
+
 1. Click the "From URL" tab
 2. Enter a JSON API endpoint (e.g., `https://jsonplaceholder.typicode.com/users`)
 3. Click "Fetch & Generate"
 4. Data is automatically imported and ready to use
 
 ### Manual Generation
+
 1. Click the "Manual" tab
 2. Enter comma-separated headers (e.g., `Name, Email, Company`)
 3. Choose number of rows (1-10,000)
 4. Click "Generate Data"
 
 ### AI Generation
+
 1. Click the "AI Generate" tab
 2. Enter comma-separated headers
 3. (Optional) Add context for more realistic data
@@ -159,11 +183,13 @@ Refer to the [Next.js deployment documentation](https://nextjs.org/docs/deployme
 6. Click "Generate with AI"
 
 ### Import Data
+
 1. Click "Import Data" button when you have existing data
 2. Select a CSV or JSON file
 3. Data is automatically parsed and loaded
 
 ### Export Data
+
 - Click "Export CSV" for Excel-compatible format
 - Click "Export JSON" for JSON format
 

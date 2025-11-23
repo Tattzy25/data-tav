@@ -6,9 +6,10 @@ import { generateWithOpenAI } from "./ai-provider-openai"
 import { extractJsonArrayFromText } from "./json-extractor"
 
 type GenerateRequestBody = {
-  headers: unknown
-  rowCount: unknown
+  headers?: unknown
+  rowCount?: unknown
   context?: unknown
+  prompt?: string
   model?: string
   provider?: string
   apiKey?: string
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
       headers,
       rowCount,
       context,
+      prompt,
       model,
       provider,
       apiKey,
@@ -101,30 +103,44 @@ export async function POST(request: Request) {
       reasoning,
     }: GenerateRequestBody = await request.json()
 
-    // Validate and sanitize inputs
-    if (!headers || !Array.isArray(headers) || headers.length === 0) {
-      return Response.json({ error: "Headers are required" }, { status: 400 })
+    // Check if this is a direct prompt request (new format) or structured request (old format)
+    const isPromptRequest = typeof prompt === "string" && prompt.trim().length > 0
+
+    let sanitizedHeaders: string[] = []
+    let numericRowCount = 10
+    let sanitizedContext = ""
+
+    if (isPromptRequest) {
+      // New format: direct prompt
+      if (!prompt || prompt.trim().length === 0) {
+        return Response.json({ error: "Prompt is required" }, { status: 400 })
+      }
+    } else {
+      // Old format: headers + rowCount
+      if (!headers || !Array.isArray(headers) || headers.length === 0) {
+        return Response.json({ error: "Headers are required for structured generation" }, { status: 400 })
+      }
+
+      if (headers.length > 50) {
+        return Response.json({ error: "Maximum 50 headers allowed" }, { status: 400 })
+      }
+
+      sanitizedHeaders = (headers as unknown[])
+        .map((h) => String(h).trim())
+        .filter((h) => h.length > 0)
+
+      if (sanitizedHeaders.length === 0) {
+        return Response.json({ error: "Valid headers are required" }, { status: 400 })
+      }
+
+      numericRowCount = typeof rowCount === "number" ? rowCount : Number(rowCount)
+
+      if (!numericRowCount || numericRowCount < 1 || numericRowCount > 100) {
+        return Response.json({ error: "Row count must be between 1 and 100" }, { status: 400 })
+      }
+
+      sanitizedContext = sanitizeContext(context)
     }
-
-    if (headers.length > 50) {
-      return Response.json({ error: "Maximum 50 headers allowed" }, { status: 400 })
-    }
-
-    const sanitizedHeaders = (headers as unknown[])
-      .map((h) => String(h).trim())
-      .filter((h) => h.length > 0)
-
-    if (sanitizedHeaders.length === 0) {
-      return Response.json({ error: "Valid headers are required" }, { status: 400 })
-    }
-
-    const numericRowCount = typeof rowCount === "number" ? rowCount : Number(rowCount)
-
-    if (!numericRowCount || numericRowCount < 1 || numericRowCount > 100) {
-      return Response.json({ error: "Row count must be between 1 and 100" }, { status: 400 })
-    }
-
-    const sanitizedContext = sanitizeContext(context)
 
     let modelDefinition
     try {
@@ -167,17 +183,37 @@ export async function POST(request: Request) {
       return Response.json({ error: "reasoning must be low, medium, or high" }, { status: 400 })
     }
 
-    const { systemPrompt, userPrompt } = buildPromptPayload(sanitizedHeaders, numericRowCount, sanitizedContext)
-    const messages = [
-      {
-        role: "system" as const,
-        content: systemPrompt,
-      },
-      {
-        role: "user" as const,
-        content: userPrompt,
-      },
-    ]
+    let messages: Array<{ role: "system" | "user"; content: string }>
+    let userPrompt = ""
+
+    if (isPromptRequest) {
+      // For direct prompt requests, use the prompt as the user message
+      messages = [
+        {
+          role: "user",
+          content: prompt!.trim(),
+        },
+      ]
+      userPrompt = prompt!.trim()
+    } else {
+      // Old format: build structured prompt
+      const { systemPrompt, userPrompt: builtUserPrompt } = buildPromptPayload(
+        sanitizedHeaders,
+        numericRowCount,
+        sanitizedContext,
+      )
+      messages = [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+        {
+          role: "user",
+          content: builtUserPrompt,
+        },
+      ]
+      userPrompt = builtUserPrompt
+    }
 
     const providerName = modelDefinition.provider.toLowerCase()
     const baseModelId = modelDefinition.model ?? modelDefinition.id
@@ -190,6 +226,7 @@ export async function POST(request: Request) {
 
     let text: string
 
+    // Prefer Groq by default when available
     if (providerName === "groq") {
       const groqApiKey = overrideApiKey ?? process.env.GROQ_API_KEY
 

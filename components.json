@@ -10,6 +10,7 @@
     "cssVariables": true,
     "prefix": ""
   },
+  "iconLibrary": "lucide",
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils",
@@ -17,8 +18,9 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "iconLibrary": "lucide",
   "registries": {
-    "@scrollxui": "https://www.scrollxui.dev/registry/{name}.json"
+    "@scrollxui": "https://www.scrollxui.dev/registry/{name}.json",
+    "@aceternity": "https://ui.aceternity.com/registry/{name}.json",
+    "@shadcn-studio": "https://shadcnstudio.com/r/{name}.json"
   }
 }

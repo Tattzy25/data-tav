@@ -1,0 +1,86 @@
+[
+  {
+    "id": "openai/gpt-oss-120b",
+    "label": "GPT OSS 120B (Groq)",
+    "provider": "groq",
+    "model": "openai/gpt-oss-120b",
+    "maxTokens": 65536,
+    "temperature": 1,
+    "capabilities": {
+      "browserSearch": { "enabled": true },
+      "codeInterpreter": { "enabled": false },
+      "mcp": {
+        "tavily": { "enabled": true }
+      },
+      "functions": { "enabled": false },
+      "modes": { "streamDefault": true },
+      "seed": 0,
+      "topP": 1
+    }
+  },
+  {
+    "id": "groq/meta-llama/llama-4-maverick-17b-128e-instruct",
+    "label": "Llama 4 Maverick 17B (Groq)",
+    "provider": "groq",
+    "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "maxTokens": 8192,
+    "temperature": 1,
+    "capabilities": {
+      "browserSearch": { "enabled": false },
+      "codeInterpreter": { "enabled": false },
+      "mcp": {
+        "tavily": { "enabled": true }
+      },
+      "functions": { "enabled": true },
+      "modes": { "streamDefault": true },
+      "seed": 0,
+      "topP": 1
+    }
+  },
+  {
+    "id": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
+    "label": "Llama 4 Scout 17B (Groq)",
+    "provider": "groq",
+    "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "maxTokens": 8192,
+    "temperature": 1,
+    "capabilities": {
+      "browserSearch": { "enabled": false },
+      "codeInterpreter": { "enabled": false },
+      "mcp": {
+        "tavily": { "enabled": true }
+      },
+      "functions": { "enabled": true },
+      "modes": { "streamDefault": true },
+      "seed": 0,
+      "topP": 1
+    }
+  },
+  {
+    "id": "openai/gpt-oss-20b",
+    "label": "GPT OSS 20B (Groq)",
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "maxTokens": 65536,
+    "temperature": 1,
+    "capabilities": {
+      "browserSearch": { "enabled": true },
+      "codeInterpreter": { "enabled": false },
+      "mcp": {
+        "tavily": { "enabled": true }
+      },
+      "functions": { "enabled": false },
+      "modes": { "streamDefault": true },
+      "seed": 0,
+      "topP": 1
+    }
+  },
+  {
+    "id": "moonshotai/kimi-k2-instruct-0905",
+    "label": "Kimi K2 Instruct 0905 (Moonshot)",
+    "provider": "moonshotai",
+    "model": "moonshotai/kimi-k2-instruct-0905",
+    "maxTokens": 65536,
+    "temperature": 0.6
+  }
+]
